@@ -1,0 +1,52 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Student {
+  matricNo     String   @id
+  name         String
+  department   String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  logs         Log[]
+}
+
+model Admin {
+  id           Int    @id @default(autoincrement())
+  username     String @unique
+  passwordHash String
+}
+
+model Zone {
+  id          Int                 @id @default(autoincrement())
+  name        String              // "Circulation", "Reference", "e-Library"
+  qrToken     String              @unique   // encoded into that zone's printed/displayed QR code
+  totalSeats  Int
+  logs        Log[]
+  snapshots   OccupancySnapshot[]
+}
+
+model Log {
+  id         Int       @id @default(autoincrement())
+  matricNo   String
+  student    Student   @relation(fields: [matricNo], references: [matricNo], onDelete: Cascade)
+  zoneId     Int
+  zone       Zone      @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  entryTime  DateTime
+  exitTime   DateTime?
+}
+
+// Stores periodic occupancy records from QR and CV streams for cross-verification analytics.
+model OccupancySnapshot {
+  id        Int      @id @default(autoincrement())
+  zoneId    Int
+  zone      Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  source    String   // "cv" | "qr"
+  count     Int
+  timestamp DateTime @default(now())
+}

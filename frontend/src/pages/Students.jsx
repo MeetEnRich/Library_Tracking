@@ -1,0 +1,131 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
+import { Users, Trash2, ShieldAlert, RefreshCw, Calendar } from 'lucide-react';
+
+const Students = () => {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await api.get('/admin/students');
+      setStudents(data);
+    } catch (err) {
+      setError('Failed to load registered student lists.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const handleDelete = async (matricNo, name) => {
+    const confirmDelete = window.confirm(`Are you sure you want to permanently delete the profile of ${name} (${matricNo})? This will also remove all their associated check-in logs.`);
+    
+    if (!confirmDelete) return;
+
+    try {
+      setError('');
+      setSuccess('');
+      await api.delete(`/admin/students/${encodeURIComponent(matricNo)}`);
+      setSuccess(`Successfully deleted student profile for ${name}`);
+      
+      // Update local state
+      setStudents((prev) => prev.filter((s) => s.matricNo !== matricNo));
+    } catch (err) {
+      setError(err.message || 'Failed to delete student record.');
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+        <RefreshCw className="animate-spin" size={32} />
+        <span style={{ marginLeft: '1rem', fontWeight: 600 }}>Loading Student Directory...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="section-header-row">
+        <div>
+          <h1>Student Directory</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Manage registered library users and view individual usage counts</p>
+        </div>
+        <button className="btn btn-secondary" onClick={fetchStudents}>
+          <RefreshCw size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
+          Reload
+        </button>
+      </div>
+
+      {error && <div className="error-banner">{error}</div>}
+      {success && <div className="success-banner">{success}</div>}
+
+      <div className="section-panel">
+        <h2>Registered Library Users ({students.length})</h2>
+        
+        {students.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
+            No students are currently registered in the tracking database.
+          </p>
+        ) : (
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Matric Number</th>
+                  <th>Student Name</th>
+                  <th>Department</th>
+                  <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Calendar size={14} />Date Enrolled</div></th>
+                  <th>Visits</th>
+                  <th style={{ textAlign: 'center' }}>Management</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.matricNo}>
+                    <td style={{ fontWeight: 600 }}>{student.matricNo}</td>
+                    <td>{student.name}</td>
+                    <td>{student.department}</td>
+                    <td>{formatDate(student.createdAt)}</td>
+                    <td style={{ fontWeight: 700 }}>{student._count.logs} visits</td>
+                    <td style={{ display: 'flex', justifyContent: 'center' }}>
+                      <button 
+                        className="btn btn-danger" 
+                        onClick={() => handleDelete(student.matricNo, student.name)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+                      >
+                        <Trash2 size={12} />
+                        Delete Record
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      
+      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem', backgroundColor: 'var(--bg-tint)', borderLeft: '4px solid var(--primary-color)' }}>
+        <ShieldAlert size={18} style={{ flexShrink: 0 }} />
+        <span><strong>Administrative Warning:</strong> Deleting a student profile triggers a cascading database action. All logs, check-ins, and analytics snapshots generated by that student will be permanently deleted. This action cannot be undone.</span>
+      </div>
+    </div>
+  );
+};
+
+export default Students;
