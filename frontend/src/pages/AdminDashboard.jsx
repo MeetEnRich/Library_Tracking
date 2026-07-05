@@ -6,12 +6,15 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const fetchStats = async () => {
     try {
       setError('');
       const data = await api.get('/admin/dashboard');
       setStats(data);
+      setCurrentPage(1);
     } catch (err) {
       setError('Failed to fetch dashboard statistics.');
       console.error(err);
@@ -198,43 +201,80 @@ const AdminDashboard = () => {
               No check-in activity recorded today.
             </p>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Matric Number</th>
-                    <th>Library Section</th>
-                    <th>Time</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats && stats.recentActivity.map((log) => (
-                    <tr key={log.id}>
-                      <td style={{ fontWeight: 600 }}>{log.student.name}</td>
-                      <td>{log.matricNo}</td>
-                      <td>{log.zone.name}</td>
-                      <td>
-                        {log.exitTime ? (
-                          <span>
-                            Checked In {formatTime(log.entryTime)} | Checked Out {formatTime(log.exitTime)}
-                          </span>
-                        ) : (
-                          <span>Checked In {formatTime(log.entryTime)}</span>
-                        )}
-                      </td>
-                      <td>
-                        {log.exitTime ? (
-                          <span className="badge badge-danger">Checked Out</span>
-                        ) : (
-                          <span className="badge badge-success">Checked In</span>
-                        )}
-                      </td>
+            <div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Matric Number</th>
+                      <th>Library Section</th>
+                      <th>Time</th>
+                      <th>Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {stats && stats.recentActivity
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((log) => (
+                        <tr key={log.id}>
+                          <td style={{ fontWeight: 600 }}>{log.student.name}</td>
+                          <td>{log.matricNo}</td>
+                          <td>{log.zone.name}</td>
+                          <td>
+                            {log.exitTime ? (
+                              <span>
+                                Checked In {formatTime(log.entryTime)} | Checked Out {formatTime(log.exitTime)}
+                              </span>
+                            ) : (
+                              <span>Checked In {formatTime(log.entryTime)}</span>
+                            )}
+                          </td>
+                          <td>
+                            {log.exitTime ? (
+                              <span className="badge badge-danger">Checked Out</span>
+                            ) : (
+                              <span className="badge badge-success">Checked In</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              {stats && Math.ceil(stats.recentActivity.length / itemsPerPage) > 1 && (
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    justify: 'center', 
+                    alignItems: 'center', 
+                    gap: '1.5rem',
+                    marginTop: '1.5rem',
+                    paddingTop: '1.25rem',
+                    borderTop: '1px solid var(--border-color)'
+                  }}
+                >
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                    disabled={currentPage === 1}
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Page <strong>{currentPage}</strong> of <strong>{Math.ceil(stats.recentActivity.length / itemsPerPage)}</strong> (Total {stats.recentActivity.length} records)
+                  </span>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(stats.recentActivity.length / itemsPerPage)))} 
+                    disabled={currentPage === Math.ceil(stats.recentActivity.length / itemsPerPage)}
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

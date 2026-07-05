@@ -28,9 +28,9 @@ async function getDashboardStats(req, res, next) {
       }
     });
 
-    // Recent activity feed (latest 10 logs)
+    // Recent activity feed (latest 50 logs)
     const recentActivity = await prisma.log.findMany({
-      take: 10,
+      take: 50,
       include: {
         student: {
           select: {
@@ -142,10 +142,35 @@ async function deleteLog(req, res, next) {
   }
 }
 
+/**
+ * Get detailed logs for a specific student.
+ */
+async function getStudentLogs(req, res, next) {
+  try {
+    const { matricNo } = req.params;
+    const logs = await prisma.log.findMany({
+      where: { matricNo },
+      include: {
+        zone: {
+          select: { name: true }
+        }
+      },
+      orderBy: {
+        entryTime: 'desc'
+      }
+    });
+
+    res.status(200).json(logs);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getDashboardStats,
   getReports,
   getStudents,
+  getStudentLogs,
   deleteStudent,
   deleteLog
 };

@@ -5,6 +5,7 @@ const studentRoutes = require('./routes/student.routes');
 const qrRoutes = require('./routes/qr.routes');
 const cvRoutes = require('./routes/cv.routes');
 const adminRoutes = require('./routes/admin.routes');
+const zonesRoutes = require('./routes/zones.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -21,6 +22,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/cv', cvRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/zones', zonesRoutes);
 
 // Fallback 404 Route
 app.use((req, res, next) => {

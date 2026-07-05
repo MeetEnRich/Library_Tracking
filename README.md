@@ -9,7 +9,7 @@ The project consists of three distinct modules:
 1. **Backend Server (Node.js + Express + Socket.IO + Prisma):**
    Manages REST API endpoints, user authentication, SQLite database operations, and real-time state broadcasts over WebSocket.
 2. **Frontend client (React + Vite + Custom CSS):**
-   Features a flat, responsive user interface styled with FULafia official brand colors (Navy and Gold) without unnecessary cards or shadows. Includes a live administrator dashboard, reporting exports, student directories, and a smartphone QR scanner.
+   Features a flat, responsive user interface styled with FULafia official brand colors (Forest Green and Gold) without unnecessary cards or shadows. Includes a live administrator dashboard, reporting exports, student directories, and a smartphone QR scanner.
 3. **Computer Vision Service (Python + FastAPI + OpenCV + YOLOv8):**
    Analyzes library camera feeds in real time to count occupants and posts updates to the backend. Includes an automatic simulated fallback and an MJPEG video stream.
 

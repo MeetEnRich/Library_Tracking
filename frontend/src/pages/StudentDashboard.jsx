@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { api, getSocket } from '../api/client';
 import OccupancyGauge from '../components/OccupancyGauge';
-import { Calendar, Clock, MapPin, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, MapPin, AlertCircle, RefreshCw, Monitor } from 'lucide-react';
 
 const StudentDashboard = () => {
   const [zones, setZones] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const fetchData = async () => {
     try {
@@ -19,6 +21,7 @@ const StudentDashboard = () => {
       // Fetch personal history
       const historyData = await api.get('/students/me/history');
       setHistory(historyData);
+      setCurrentPage(1);
     } catch (err) {
       setError('Failed to fetch dashboard data. Please try again.');
       console.error(err);
@@ -85,6 +88,37 @@ const StudentDashboard = () => {
     );
   }
 
+  // Smart Seating Recommendation logic
+  const getRecommendation = () => {
+    if (zones.length === 0) return null;
+    
+    const zoneStats = zones.map(z => {
+      const occupied = z.qrOccupied || 0;
+      const total = z.totalSeats || 50;
+      const pct = (occupied / total) * 100;
+      const free = total - occupied;
+      return { ...z, pct, free };
+    });
+
+    const allFull = zoneStats.every(z => z.pct >= 90);
+    if (allFull) {
+      return {
+        type: 'critical',
+        message: 'All library units are currently highly occupied. You may experience wait times for seating. Please consult the e-Library desktop labs or check back later.'
+      };
+    }
+
+    zoneStats.sort((a, b) => a.pct - b.pct);
+    const bestZone = zoneStats[0];
+
+    return {
+      type: 'recommend',
+      message: `The quietest unit is the ${bestZone.name} with ${bestZone.free} open seats (${Math.round(bestZone.pct)}% occupied). This is the best study spot right now!`
+    };
+  };
+
+  const recommendation = getRecommendation();
+
   return (
     <div>
       <div className="section-header-row">
@@ -100,19 +134,29 @@ const StudentDashboard = () => {
 
       {error && <div className="error-banner">{error}</div>}
 
-      {/* Active Visit Banner */}
-      {activeVisit && (
-        <div className="info-banner" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <AlertCircle size={20} />
-          <div>
-            <strong>Status Check:</strong> You are currently checked in to the{' '}
-            <strong>{activeVisit.zone.name}</strong>. Remember to scan the QR code to check out when leaving.
-            <div style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
-              Checked in at: {formatDateTime(activeVisit.entryTime)} (Duration: {calculateDuration(activeVisit.entryTime, null)})
-            </div>
-          </div>
+      {/* Smart Seating Suggestion Card */}
+      {recommendation && (
+        <div 
+          className="section-panel" 
+          style={{ 
+            marginTop: '1rem', 
+            marginBottom: '1.5rem', 
+            borderLeft: `4px solid ${recommendation.type === 'critical' ? 'var(--danger-color)' : 'var(--primary-color)'}`,
+            padding: '1.25rem',
+            backgroundColor: 'var(--bg-tint)'
+          }}
+        >
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', color: 'var(--primary-color)', marginBottom: '0.4rem', marginTop: 0 }}>
+            <Monitor size={18} />
+            Smart Study Recommendation
+          </h3>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
+            {recommendation.message}
+          </p>
         </div>
       )}
+
+
 
       {/* Zones Occupancy Section */}
       <h2 style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>Library Zones Seating</h2>
@@ -137,35 +181,72 @@ const StudentDashboard = () => {
             No library visits recorded yet. Scans will be logged here.
           </p>
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MapPin size={14} />Library Section</div></th>
-                  <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Calendar size={14} />Entry Time</div></th>
-                  <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Clock size={14} />Exit Time</div></th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((log) => (
-                  <tr key={log.id}>
-                    <td style={{ fontWeight: 600 }}>{log.zone.name}</td>
-                    <td>{formatDateTime(log.entryTime)}</td>
-                    <td>{log.exitTime ? formatDateTime(log.exitTime) : 'Ongoing'}</td>
-                    <td>{calculateDuration(log.entryTime, log.exitTime)}</td>
-                    <td>
-                      {log.exitTime ? (
-                        <span className="badge badge-success">Completed</span>
-                      ) : (
-                        <span className="badge badge-info">Active</span>
-                      )}
-                    </td>
+          <div>
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MapPin size={14} />Library Section</div></th>
+                    <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Calendar size={14} />Entry Time</div></th>
+                    <th><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Clock size={14} />Exit Time</div></th>
+                    <th>Duration</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {history
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((log) => (
+                      <tr key={log.id}>
+                        <td style={{ fontWeight: 600 }}>{log.zone.name}</td>
+                        <td>{formatDateTime(log.entryTime)}</td>
+                        <td>{log.exitTime ? formatDateTime(log.exitTime) : 'Ongoing'}</td>
+                        <td>{calculateDuration(log.entryTime, log.exitTime)}</td>
+                        <td>
+                          {log.exitTime ? (
+                            <span className="badge badge-success">Completed</span>
+                          ) : (
+                            <span className="badge badge-info">Active</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            {Math.ceil(history.length / itemsPerPage) > 1 && (
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  justify: 'center', 
+                  alignItems: 'center', 
+                  gap: '1.5rem',
+                  marginTop: '1.5rem',
+                  paddingTop: '1.25rem',
+                  borderTop: '1px solid var(--border-color)'
+                }}
+              >
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                  disabled={currentPage === 1}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Page <strong>{currentPage}</strong> of <strong>{Math.ceil(history.length / itemsPerPage)}</strong> (Total {history.length} records)
+                </span>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(history.length / itemsPerPage)))} 
+                  disabled={currentPage === Math.ceil(history.length / itemsPerPage)}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

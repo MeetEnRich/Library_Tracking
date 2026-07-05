@@ -17,7 +17,9 @@ class CameraSource:
         self.source_path = source_path
         self.use_fallback_video = use_fallback_video
 
-        if OPENCV_AVAILABLE:
+        force_sim = os.getenv("FORCE_SIMULATION", "false").lower() in ("true", "1", "yes")
+
+        if OPENCV_AVAILABLE and not force_sim:
             if use_fallback_video and source_path and os.path.exists(source_path):
                 print(f"Initializing video playback source: {source_path}")
                 self.cap = cv2.VideoCapture(source_path)
@@ -30,6 +32,10 @@ class CameraSource:
                     print("Webcam not found or busy. Switching to simulated frame generation.")
                     self.cap = None
                     self.is_simulated = True
+        else:
+            if force_sim:
+                print("FORCE_SIMULATION active in environment. Skipping camera capture to keep webcam free.")
+            self.is_simulated = True
 
     def get_frame(self):
         """
@@ -40,8 +46,8 @@ class CameraSource:
             # Generate a simulated frame (dark blue matrix with a moving white rectangle)
             if OPENCV_AVAILABLE:
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                # Fill background with dark navy blue
-                frame[:] = [64, 35, 12]  # BGR for FULafia Navy
+                # Fill background with dark forest green
+                frame[:] = [28, 54, 0]  # BGR for FULafia Forest Green
                 
                 # Draw a moving square
                 t = time.time()

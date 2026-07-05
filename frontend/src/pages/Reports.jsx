@@ -20,6 +20,7 @@ const Reports = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [chartTab, setChartTab] = useState('daily');
 
   const fetchFiltersAndData = async () => {
     try {
@@ -118,6 +119,28 @@ const Reports = () => {
       });
   };
 
+  // Chart Data: group logs count by hour of day (0-23)
+  const getHourlyChartData = () => {
+    const hourCounts = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      visitors: 0
+    }));
+
+    for (const log of logs) {
+      const hr = new Date(log.entryTime).getHours();
+      hourCounts[hr].visitors++;
+    }
+
+    return hourCounts.map(({ hour, visitors }) => {
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHr = hour % 12 === 0 ? 12 : hour % 12;
+      return {
+        time: `${displayHr} ${ampm}`,
+        visitors
+      };
+    });
+  };
+
   // Client-side CSV generation
   const downloadCSV = () => {
     if (logs.length === 0) return;
@@ -181,53 +204,106 @@ const Reports = () => {
           Report Query Filters
         </h3>
         
-        <div className="filter-row">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600 }} htmlFor="zone">Library Zone</label>
-            <select
-              id="zone"
-              className="select-filter"
-              value={zoneId}
-              onChange={(e) => setZoneId(e.target.value)}
+        <div className="filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem' }}>
+          
+          {/* Inputs Group (Left) */}
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '180px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }} htmlFor="zone">Library Zone</label>
+              <select
+                id="zone"
+                className="select-filter"
+                value={zoneId}
+                onChange={(e) => setZoneId(e.target.value)}
+                style={{ width: '100%', padding: '0.55rem' }}
+              >
+                <option value="all">All Library Zones</option>
+                {zones.map((z) => (
+                  <option key={z.zoneId} value={z.zoneId}>{z.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '140px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }} htmlFor="from">Start Date</label>
+              <input
+                type="date"
+                id="from"
+                className="date-filter"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '140px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }} htmlFor="to">End Date</label>
+              <input
+                type="date"
+                id="to"
+                className="date-filter"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem' }}
+              />
+            </div>
+
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={fetchFiltersAndData}
+              style={{ padding: '0.55rem 1.25rem' }}
             >
-              <option value="all">All Library Zones</option>
-              {zones.map((z) => (
-                <option key={z.zoneId} value={z.zoneId}>{z.name}</option>
-              ))}
-            </select>
+              <RefreshCw size={14} style={{ marginRight: '0.25rem', verticalAlign: 'middle' }} />
+              Reload
+            </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600 }} htmlFor="from">Start Date</label>
-            <input
-              type="date"
-              id="from"
-              className="date-filter"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
+          {/* Quick Presets Group (Right) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Quick Range Presets</span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const d = new Date();
+                  setFromDate(d.toISOString().split('T')[0]);
+                  setToDate(d.toISOString().split('T')[0]);
+                }}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                Today
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 7);
+                  setFromDate(d.toISOString().split('T')[0]);
+                  setToDate(new Date().toISOString().split('T')[0]);
+                }}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                Last 7 Days
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 30);
+                  setFromDate(d.toISOString().split('T')[0]);
+                  setToDate(new Date().toISOString().split('T')[0]);
+                }}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                Last 30 Days
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600 }} htmlFor="to">End Date</label>
-            <input
-              type="date"
-              id="to"
-              className="date-filter"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-
-          <button 
-            type="button" 
-            className="btn btn-secondary" 
-            onClick={fetchFiltersAndData}
-            style={{ marginTop: '1.25rem' }}
-          >
-            <RefreshCw size={14} style={{ marginRight: '0.25rem', verticalAlign: 'middle' }} />
-            Reload
-          </button>
         </div>
       </div>
 
@@ -250,7 +326,28 @@ const Reports = () => {
       {/* Daily Usage Chart */}
       <div className="dashboard-grid" style={{ marginTop: '2rem' }}>
         <div className="span-8 section-panel">
-          <h2>Daily Visitor Attendance Trends</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+            <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Attendance Distribution</h2>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className={`btn ${chartTab === 'daily' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setChartTab('daily')}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 600 }}
+              >
+                Daily Trends
+              </button>
+              <button
+                type="button"
+                className={`btn ${chartTab === 'hourly' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setChartTab('hourly')}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 600 }}
+              >
+                Peak Hours
+              </button>
+            </div>
+          </div>
+          
           <div className="chart-container-box">
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -262,12 +359,15 @@ const Reports = () => {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={getChartData()} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
+                <BarChart 
+                  data={chartTab === 'daily' ? getChartData() : getHourlyChartData()} 
+                  margin={{ top: 20, right: 10, left: -20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <XAxis dataKey={chartTab === 'daily' ? 'date' : 'time'} tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: '#F1F5F9' }} />
-                  <Bar dataKey="visitors" fill="#0C2340" />
+                  <Tooltip cursor={{ fill: 'var(--bg-tint)' }} />
+                  <Bar dataKey="visitors" fill="var(--primary-color)" />
                 </BarChart>
               </ResponsiveContainer>
             )}

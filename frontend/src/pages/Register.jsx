@@ -52,6 +52,7 @@ const Register = ({ setCurrentPage }) => {
 
   return (
     <div className="form-container">
+      <img src="/logo.png" alt="FULafia Logo" style={{ display: 'block', margin: '0 auto 1.5rem auto', height: '64px', width: 'auto' }} />
       <h2 className="form-title" style={{ display: 'block', textAlign: 'center', border: 'none' }}>
         Student Registration
       </h2>
