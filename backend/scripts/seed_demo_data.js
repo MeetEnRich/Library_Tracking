@@ -94,9 +94,21 @@ async function main() {
       let concurrentActive = 0;
       
       for (let i = 0; i < numVisitors; i++) {
-        // Random check-in hour between 8:00 AM and 5:00 PM
-        const entryHour = randRange(8, 16);
-        const entryMinute = randRange(0, 59);
+        // Random check-in hour between 8:00 AM and 5:00 PM (or current hour if today)
+        let entryHour, entryMinute;
+        if (dayOffset === 0) {
+          const currentHour = now.getHours();
+          if (currentHour <= 8) {
+            entryHour = 8;
+            entryMinute = 0;
+          } else {
+            entryHour = randRange(8, currentHour - 1);
+            entryMinute = randRange(0, 59);
+          }
+        } else {
+          entryHour = randRange(8, 16);
+          entryMinute = randRange(0, 59);
+        }
         
         const entryTime = new Date(targetDate);
         entryTime.setHours(entryHour, entryMinute, 0, 0);

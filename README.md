@@ -26,10 +26,22 @@ The project consists of three distinct modules:
 ## Installation & Setup
 
 ### Prerequisites
-Make sure you have Node.js (v18+) and Python (v3.10+) installed.
+Make sure you have Node.js (v18+) and Python (v3.10+) installed on your system.
 
-### 1. Database & Backend Setup
+---
 
+### Option A: Automated Installation (Recommended)
+This method automatically configures environment files, installs dependencies for all three modules, sets up the SQLite database, and seeds it with fresh logs based on your current local date.
+
+1. Locate and double-click the **`setup.bat`** file in the project root directory.
+2. Wait for the terminal window to finish running all configuration tasks.
+3. Once the setup has completed successfully, start all servers simultaneously by double-clicking **`run_all.bat`**.
+
+---
+
+### Option B: Manual Installation
+
+#### 1. Database & Backend Setup
 1. Open your terminal and navigate to the backend folder:
    ```bash
    cd backend
@@ -38,22 +50,25 @@ Make sure you have Node.js (v18+) and Python (v3.10+) installed.
    ```bash
    npm install
    ```
-3. Run database migrations to initialize SQLite tables:
+3. Copy environment configuration file if not already present:
+   ```bash
+   copy .env.example .env
+   ```
+4. Run database migrations to initialize SQLite tables:
    ```bash
    npx prisma migrate dev --name init
    ```
-4. Seed the database with library zones, administrator accounts, student profiles, and rich historical logs:
+5. Seed the database with library zones, administrator accounts, student profiles, and rich historical logs:
    ```bash
    npm run prisma:seed
    ```
-5. Start the backend development server:
+6. Start the backend development server:
    ```bash
    npm run dev
    ```
    The backend server will run on [http://localhost:5000](http://localhost:5000).
 
-### 2. Frontend Setup
-
+#### 2. Frontend Setup
 1. Navigate to the frontend folder:
    ```bash
    cd ../frontend
@@ -68,8 +83,7 @@ Make sure you have Node.js (v18+) and Python (v3.10+) installed.
    ```
    Open the displayed URL (typically [http://localhost:5173](http://localhost:5173)) in your web browser.
 
-### 3. Computer Vision Service Setup
-
+#### 3. Computer Vision Service Setup
 1. Navigate to the cv-service folder:
    ```bash
    cd ../cv-service
