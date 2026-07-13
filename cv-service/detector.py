@@ -25,7 +25,7 @@ class PersonDetector:
         self.model = None
         self.history = []
         self.max_history = 5
-        self.simulated_count = 15
+        self.simulated_counts = {1: 8, 2: 15, 3: 12}
 
         if not self.is_simulated:
             try:
@@ -46,16 +46,17 @@ class PersonDetector:
             change = random.choice([-2, -1, 0, 1, 2])
             
             # Keep simulated count within realistic bounds depending on target zone
-            # Zone 1 (Circulation) capacity: 50 -> keep count 10 - 25
-            # Zone 2 (Reference) capacity: 80 -> keep count 30 - 55
-            # Zone 3 (e-Library) capacity: 60 -> keep count 20 - 45
-            min_c, max_c = 10, 25
+            # Zone 1 (Circulation) capacity: 50 -> keep count 5 - 15
+            # Zone 2 (Reference) capacity: 80 -> keep count 10 - 25
+            # Zone 3 (e-Library) capacity: 60 -> keep count 8 - 20
+            min_c, max_c = 5, 15
             if zone_id == 2:
-                min_c, max_c = 30, 55
+                min_c, max_c = 10, 25
             elif zone_id == 3:
-                min_c, max_c = 20, 45
+                min_c, max_c = 8, 20
 
-            self.simulated_count = max(min_c, min(max_c, self.simulated_count + change))
+            current_sim_count = self.simulated_counts.get(zone_id, 10)
+            self.simulated_counts[zone_id] = max(min_c, min(max_c, current_sim_count + change))
             
             annotated_frame = frame
             if OPENCV_AVAILABLE and frame is not None:
@@ -64,7 +65,7 @@ class PersonDetector:
                 h, w, _ = annotated_frame.shape
                 cv2.putText(
                     annotated_frame, 
-                    f"SIMULATED COUNT: {self.simulated_count} (Zone {zone_id})", 
+                    f"SIMULATED COUNT: {self.simulated_counts[zone_id]} (Zone {zone_id})", 
                     (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
                     0.8, 
@@ -74,7 +75,7 @@ class PersonDetector:
                 # Draw a green indicator dot
                 cv2.circle(annotated_frame, (w - 30, 30), 10, (0, 255, 0), -1)
 
-            return self.simulated_count, annotated_frame
+            return self.simulated_counts[zone_id], annotated_frame
 
         # Actual YOLOv8 Detection
         try:

@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +21,19 @@ ZONE_ID = int(os.getenv("ZONE_ID", "3"))  # Default to e-Library Section
 INTERVAL = int(os.getenv("CV_UPLOAD_INTERVAL", "3"))  # Upload count every 3 seconds
 PORT = int(os.getenv("PORT", "8000"))
 
-app = FastAPI(title="FULafia Library CV Analytics Service")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the worker thread
+    thread = threading.Thread(target=upload_occupancy_loop, daemon=True)
+    thread.start()
+    yield
+    # Stop worker and release camera
+    global running
+    running = False
+    camera.release()
+    print("CV Analytics Service shutting down.")
+
+app = FastAPI(title="FULafia Library CV Analytics Service", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -34,6 +47,11 @@ app.add_middleware(
 # Global instances
 camera = CameraSource(use_fallback_video=False)
 detector = PersonDetector()
+
+if camera.is_simulated:
+    print("Camera is simulated. Forcing detector to simulation mode for fluctuating counts.")
+    detector.is_simulated = True
+
 
 current_count = 0
 last_update_time = 0
@@ -55,31 +73,50 @@ def upload_occupancy_loop():
 
     while running:
         try:
-            # Capture frame and detect occupants
-            frame = camera.get_frame()
-            count, _ = detector.detect(frame, zone_id=ZONE_ID)
-            
-            current_count = count
-            last_update_time = time.time()
+            if camera.is_simulated:
+                # In simulation mode, simulate and post for all zones so the dashboard is fully dynamic
+                for z_id in [1, 2, 3]:
+                    frame = camera.get_frame()
+                    count, _ = detector.detect(frame, zone_id=z_id)
+                    
+                    if z_id == ZONE_ID:
+                        current_count = count
+                        last_update_time = time.time()
 
-            # Post count to backend
-            payload = {
-                "zoneId": ZONE_ID,
-                "count": current_count
-            }
-            
-            response = requests.post(
-                f"{BACKEND_URL}/cv/occupancy",
-                json=payload,
-                headers=headers,
-                timeout=5
-            )
-            
-            if response.status_code == 201:
-                # Successfully logged
-                pass
+                    payload = {
+                        "zoneId": z_id,
+                        "count": count
+                    }
+                    
+                    response = requests.post(
+                        f"{BACKEND_URL}/cv/occupancy",
+                        json=payload,
+                        headers=headers,
+                        timeout=5
+                    )
+                    if response.status_code != 201:
+                        print(f"Backend rejected CV upload for Zone {z_id} (Status {response.status_code}): {response.text}")
             else:
-                print(f"Backend rejected CV upload (Status {response.status_code}): {response.text}")
+                # Real webcam mode: only capture and post for the configured ZONE_ID
+                frame = camera.get_frame()
+                count, _ = detector.detect(frame, zone_id=ZONE_ID)
+                current_count = count
+                last_update_time = time.time()
+
+                payload = {
+                    "zoneId": ZONE_ID,
+                    "count": current_count
+                }
+                
+                response = requests.post(
+                    f"{BACKEND_URL}/cv/occupancy",
+                    json=payload,
+                    headers=headers,
+                    timeout=5
+                )
+                
+                if response.status_code != 201:
+                    print(f"Backend rejected CV upload (Status {response.status_code}): {response.text}")
                 
         except Exception as e:
             print(f"Worker encountered connection error to backend: {e}")
@@ -147,19 +184,7 @@ def get_stream():
     )
 
 
-@app.on_event("startup")
-def startup_event():
-    # Start the worker thread
-    thread = threading.Thread(target=upload_occupancy_loop, daemon=True)
-    thread.start()
 
-
-@app.on_event("shutdown")
-def shutdown_event():
-    global running
-    running = False
-    camera.release()
-    print("CV Analytics Service shutting down.")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,14 @@ async function main() {
   await prisma.student.deleteMany({});
   await prisma.admin.deleteMany({});
 
+  // Reset SQLite autoincrement sequences to start IDs from 1
+  try {
+    await prisma.$executeRawUnsafe(`DELETE FROM sqlite_sequence WHERE name IN ('Zone', 'Student', 'Admin', 'Log', 'OccupancySnapshot');`);
+    console.log('Autoincrement sequences reset.');
+  } catch (err) {
+    console.log('Skipping sqlite_sequence reset (might not be SQLite):', err.message);
+  }
+
   // 2. Create Admin
   console.log('Creating admin...');
   const adminPasswordHash = await bcrypt.hash('admin123', 10);
