@@ -50,7 +50,7 @@ const Login = ({ setCurrentPage }) => {
     <div className="form-container">
       <img src="/logo.png" alt="FULafia Logo" style={{ display: 'block', margin: '0 auto 1.5rem auto', height: '64px', width: 'auto' }} />
       <h2 className="form-title" style={{ display: 'block', textAlign: 'center', border: 'none' }}>
-        FULafia Portal Sign-in
+        FULafia Library Portal Sign-in
       </h2>
 
       {/* Tabs */}
